@@ -48,13 +48,7 @@ class _OperatorDashboardState extends State<OperatorDashboard> {
         loading = false;
       });
 
-      if (stations.isNotEmpty && mounted) {
-         // Auto-redirect to the first station's task list
-         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => OperatorTaskList(station: stations.first)),
-         );
-      }
+      // Let the operator see the dashboard list instead of auto-redirecting
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
