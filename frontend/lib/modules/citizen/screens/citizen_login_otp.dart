@@ -40,71 +40,18 @@ class _CitizenLoginOtpState extends State<CitizenLoginOtp> {
   }
 
   Future<void> _verifyAndLoginCitizen() async {
-    try {
-      // If this phone belongs to a staff/operator, go to role-selection screen
-      // which will call verifyOtp with the chosen role itself.
-      if (widget.isOfficer) {
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RoleSelectionScreen(
-              phone: widget.phone,
-              otp: otpCtrl.text.trim(),
-            ),
-          ),
-        );
-        if (mounted) setState(() => loading = false);
-        return;
-      }
-
-      // Regular citizen login: verify OTP as CITIZEN
-      final res = await AuthService.verifyOtp(
-        widget.phone,
-        otpCtrl.text.trim(),
-        role: "CITIZEN",
-      );
-
-      final String token = res["token"];
-      final String role = res["role"];
-
-      await TokenStorage.saveToken(token);
-      await TokenStorage.saveRole(role);
-
-      if (mounted) {
-        Widget nextScreen;
-        switch (role) {
-          case "FIELD_OFFICER":
-            nextScreen = const OfficerDashboard();
-            break;
-          case "JUNIOR_ENGINEER":
-            nextScreen = const JEDashboard();
-            break;
-          case "COMMISSIONER":
-            nextScreen = CommissionerDashboard();
-            break;
-          case "LIFTING_OPERATOR":
-          case "PUMPING_OPERATOR":
-          case "STP_OPERATOR":
-            nextScreen = const OperatorDashboard();
-            break;
-          default:
-            nextScreen = const CitizenHome();
-        }
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => nextScreen),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid OTP ")),
-        );
-      }
-    }
-
+    // Always navigate to RoleSelectionScreen — user picks their own role.
+    // This avoids the fragile isOfficer backend hint entirely.
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RoleSelectionScreen(
+          phone: widget.phone,
+          otp: otpCtrl.text.trim(),
+        ),
+      ),
+    );
     if (mounted) setState(() => loading = false);
   }
 

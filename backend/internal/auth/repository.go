@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -87,8 +88,10 @@ func (r *Repository) IsOfficer(ctx context.Context, phone string) (bool, error) 
 		)`, phone,
 	).Scan(&exists)
 	if err != nil {
+		log.Printf("❌ IsOfficer query error for %s: %v", phone, err)
 		return false, nil
 	}
+	log.Printf("🔍 IsOfficer(%s) = %v", phone, exists)
 	return exists, nil
 }
 
