@@ -76,25 +76,22 @@ func (r *Repository) MarkOTPUsed(ctx context.Context, phone string) error {
 }
 
 func (r *Repository) IsOfficer(ctx context.Context, phone string) (bool, error) {
-	var role string
-	// Check if user exists in the users table with a non-citizen role
-	err := r.DB.QueryRow(ctx, "SELECT role FROM users WHERE phone_number = $1", phone).Scan(&role)
-	if err == nil {
-		return role != "CITIZEN", nil
+	// Check if ANY non-CITIZEN role exists for this phone number.
+	// A phone may have multiple rows (one per role) due to the ON CONFLICT seeding.
+	var exists bool
+	err := r.DB.QueryRow(ctx,
+		`SELECT EXISTS(
+			SELECT 1 FROM users
+			WHERE phone_number = $1
+			  AND role != 'CITIZEN'
+		)`, phone,
+	).Scan(&exists)
+	if err != nil {
+		return false, nil
 	}
-
-	// Also check the operators table (lifting/pumping/STP operators are stored there)
-	var count int
-	err = r.DB.QueryRow(ctx,
-		"SELECT COUNT(*) FROM operators WHERE phone_number = $1", phone,
-	).Scan(&count)
-	if err == nil && count > 0 {
-		return true, nil
-	}
-
-	// Not found anywhere – treat as new citizen
-	return false, nil
+	return exists, nil
 }
+
 func (r *Repository) GetUserByPhone(ctx context.Context, phone string) (string, string, error) {
 	var userID string
 	var role string
