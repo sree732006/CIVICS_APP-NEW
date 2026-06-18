@@ -7,7 +7,6 @@ import '../../junior_engineer/screens/je_dashboard.dart';
 import '../../commissioner/screens/commissioner_dashboard.dart';
 import '../../operator/screens/operator_dashboard.dart';
 import 'citizen_home.dart';
-import 'role_selection_screen.dart';
 
 class CitizenLoginOtp extends StatefulWidget {
   final String phone;
@@ -40,18 +39,93 @@ class _CitizenLoginOtpState extends State<CitizenLoginOtp> {
   }
 
   Future<void> _verifyAndLoginCitizen() async {
-    // Always navigate to RoleSelectionScreen — user picks their own role.
-    // This avoids the fragile isOfficer backend hint entirely.
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RoleSelectionScreen(
-          phone: widget.phone,
-          otp: otpCtrl.text.trim(),
-        ),
-      ),
-    );
+    try {
+      String? roleToSend = "CITIZEN";
+      
+      if (widget.isOfficer) {
+         final selected = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Select Login Type"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text("Citizen"),
+                  leading: const Icon(Icons.person, color: Color(0xFF0D47A1)),
+                  onTap: () => Navigator.pop(ctx, "CITIZEN"),
+                ),
+                const Divider(),
+                ListTile(
+                  title: const Text("Operator"),
+                  leading: const Icon(Icons.badge, color: Color(0xFF0D47A1)),
+                  onTap: () => Navigator.pop(ctx, "OPERATOR"),
+                ),
+              ],
+            ),
+          ),
+        );
+        if (selected == null) {
+          setState(() => loading = false);
+          return;
+        }
+        roleToSend = selected == "OPERATOR" ? "OPERATOR" : selected;
+      }
+
+      final res = await AuthService.verifyOtp(
+        widget.phone,
+        otpCtrl.text.trim(),
+        role: roleToSend!,
+      );
+
+      final String token = res["token"];
+      final String role = res["role"];
+      
+      await TokenStorage.saveToken(token);
+      await TokenStorage.saveRole(role);
+
+      if (mounted) {
+        if (role == "FIELD_OFFICER") {
+             Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const OfficerDashboard()),
+            (route) => false,
+          );
+        } else if (role == "JUNIOR_ENGINEER") {
+             Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const JEDashboard()),
+            (route) => false,
+          );
+        } else if (role == "COMMISSIONER") {
+             Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const CommissionerDashboard()),
+            (route) => false,
+          );
+        } else if (role.contains("OPERATOR")) {
+             Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const OperatorDashboard()),
+            (route) => false,
+          );
+        } else {
+             Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const CitizenHome()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Invalid OTP ")),
+        );
+      }
+    }
+
     if (mounted) setState(() => loading = false);
   }
 

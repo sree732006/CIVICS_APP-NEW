@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -77,24 +76,16 @@ func (r *Repository) MarkOTPUsed(ctx context.Context, phone string) error {
 }
 
 func (r *Repository) IsOfficer(ctx context.Context, phone string) (bool, error) {
-	// Check if ANY non-CITIZEN role exists for this phone number.
-	// A phone may have multiple rows (one per role) due to the ON CONFLICT seeding.
-	var exists bool
-	err := r.DB.QueryRow(ctx,
-		`SELECT EXISTS(
-			SELECT 1 FROM users
-			WHERE phone_number = $1
-			  AND role != 'CITIZEN'
-		)`, phone,
-	).Scan(&exists)
-	if err != nil {
-		log.Printf("❌ IsOfficer query error for %s: %v", phone, err)
-		return false, nil
+	var role string
+	// Check if user exists in the users table with a non-citizen role
+	err := r.DB.QueryRow(ctx, "SELECT role FROM users WHERE phone_number = $1 AND role <> 'CITIZEN' LIMIT 1", phone).Scan(&role)
+	if err == nil {
+		return true, nil
 	}
-	log.Printf("🔍 IsOfficer(%s) = %v", phone, exists)
-	return exists, nil
-}
 
+	// Not found anywhere – treat as new citizen
+	return false, nil
+}
 func (r *Repository) GetUserByPhone(ctx context.Context, phone string) (string, string, error) {
 	var userID string
 	var role string
