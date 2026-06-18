@@ -5,6 +5,7 @@ import '../../field_officer/screens/officer_dashboard.dart';
 import 'citizen_home.dart';
 import '../../junior_engineer/screens/je_dashboard.dart';
 import '../../commissioner/screens/commissioner_dashboard.dart';
+import '../../operator/screens/operator_dashboard.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   final String phone;
@@ -54,6 +55,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
       case "COMMISSIONER":
         nextScreen = CommissionerDashboard();
+        break;
+
+      case "LIFTING_OPERATOR":
+      case "PUMPING_OPERATOR":
+      case "STP_OPERATOR":
+        nextScreen = const OperatorDashboard();
         break;
 
       default:

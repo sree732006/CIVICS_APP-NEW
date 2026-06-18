@@ -41,83 +41,61 @@ class _CitizenLoginOtpState extends State<CitizenLoginOtp> {
 
   Future<void> _verifyAndLoginCitizen() async {
     try {
-      String? roleToSend = "CITIZEN";
-      
+      // If this phone belongs to a staff/operator, go to role-selection screen
+      // which will call verifyOtp with the chosen role itself.
       if (widget.isOfficer) {
-         final selected = await showDialog<String>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Select Login Type"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  title: const Text("Citizen"),
-                  leading: const Icon(Icons.person, color: Color(0xFF0D47A1)),
-                  onTap: () => Navigator.pop(ctx, "CITIZEN"),
-                ),
-                const Divider(),
-                ListTile(
-                  title: const Text("Operator"),
-                  leading: const Icon(Icons.badge, color: Color(0xFF0D47A1)),
-                  onTap: () => Navigator.pop(ctx, "OPERATOR"),
-                ),
-              ],
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RoleSelectionScreen(
+              phone: widget.phone,
+              otp: otpCtrl.text.trim(),
             ),
           ),
         );
-        if (selected == null) {
-          setState(() => loading = false);
-          return;
-        }
-        roleToSend = selected == "OPERATOR" ? "OPERATOR" : selected;
+        if (mounted) setState(() => loading = false);
+        return;
       }
 
+      // Regular citizen login: verify OTP as CITIZEN
       final res = await AuthService.verifyOtp(
         widget.phone,
         otpCtrl.text.trim(),
-        role: roleToSend!,
+        role: "CITIZEN",
       );
 
       final String token = res["token"];
       final String role = res["role"];
-      
+
       await TokenStorage.saveToken(token);
       await TokenStorage.saveRole(role);
 
       if (mounted) {
-        if (role == "FIELD_OFFICER") {
-             Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const OfficerDashboard()),
-            (route) => false,
-          );
-        } else if (role == "JUNIOR_ENGINEER") {
-             Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const JEDashboard()),
-            (route) => false,
-          );
-        } else if (role == "COMMISSIONER") {
-             Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const CommissionerDashboard()),
-            (route) => false,
-          );
-        } else if (role.contains("OPERATOR")) {
-             Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const OperatorDashboard()),
-            (route) => false,
-          );
-        } else {
-             Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const CitizenHome()),
-            (route) => false,
-          );
+        Widget nextScreen;
+        switch (role) {
+          case "FIELD_OFFICER":
+            nextScreen = const OfficerDashboard();
+            break;
+          case "JUNIOR_ENGINEER":
+            nextScreen = const JEDashboard();
+            break;
+          case "COMMISSIONER":
+            nextScreen = CommissionerDashboard();
+            break;
+          case "LIFTING_OPERATOR":
+          case "PUMPING_OPERATOR":
+          case "STP_OPERATOR":
+            nextScreen = const OperatorDashboard();
+            break;
+          default:
+            nextScreen = const CitizenHome();
         }
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => nextScreen),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) {
